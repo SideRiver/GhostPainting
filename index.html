@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+    <title>In/Outside display</title>
+    <script src="https://unpkg.com/three@0.116.1"></script>
+    <script type="text/javascript" src="techAcademy.js"></script>
+    <script src="https://unpkg.com/three@0.116.1/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://unpkg.com/@pixiv/three-vrm@0.3.4/lib/three-vrm.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@1.7.4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@1.7.4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/facemesh@0.0.3"></script>
+
+    <script src="https://infocom-tpo.github.io/facevrm/triangulation.js"></script>
+    <script async="" src="https://infocom-tpo.github.io/facevrm/opencv.js"></script>
+
+    <style>
+    html{
+        overflow: hidden;
+    }
+    .abs {
+        position: absolute;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      /* background-color: black; */
+      background-image: url("back.jpeg");
+      background-size: cover;
+      background-attachment: fixed;
+    }
+
+    .output_screean {
+      position: relative;
+      z-index: 1;
+    }
+    .vrmCanvas {
+      position: absolute;
+      z-index: 2;
+      /* background: gold; */
+      width: 450px;
+      height: 400px;
+    }
+
+    .canvas-wrapper {
+      position: absolute;
+      z-index: 4;
+      width: 98%;
+      left: 10px;
+      top: 420px;
+      display: none;
+    }
+
+    .input_text {
+      left: 50px;
+      top: 30px;
+      width: 350px;
+      height: 300px;
+      position: absolute;
+      z-index: 5;
+      font-size: 30px;
+      background: transparent;
+      border-style: none;
+      color: white;
+      opacity: 0.9;
+    }
+    .output_screean {
+        position: absolute;
+        top: 18%;
+        left: 35%;
+    }
+    </style>
+    </head>
+    <body class="vsc-initialized">
+    <div id="main">
+      <div class="container">
+        <!-- ここからモデル -->
+        <div class="output_screean">
+          <div id="vrmCanvas" class="vrmCanvas">
+          </div>
+          <!-- <div class="textarea"></div> -->
+          <!-- <div><textarea class="input_text"></textarea></div> -->
+        </div>
+        <div class="canvas-wrapper" style="width: 300px; height: 250px;"><div class="vsc-controller vsc-nosource" data-vscid="el3u6cdoc"></div>
+          <canvas id="output" width="300" height="250"></canvas>
+          <video id="video" playsinline="" style="
+            -webkit-transform: scaleX(-1);
+            transform: scaleX(-1);
+            visibility: hidden;
+            width: auto;
+            height: auto;
+            " data-vscid="el3u6cdoc" width="300" height="250">
+          </video>
+        </div>
+      </div>
+    </div>
+    <script>
+      const state = {
+    maxFaces: 1,
+    triangulateMesh: true
+  };
+
+  // renderer
+  let vrmCanvas = document.getElementById('vrmCanvas');
+  const renderer = new THREE.WebGLRenderer({ alpha: true });
+  renderer.setSize( vrmCanvas.clientWidth, vrmCanvas.clientHeight );
+  renderer.setPixelRatio( window.devicePixelRatio );
+  vrmCanvas.appendChild(renderer.domElement);
+
+  // camera
+  const camera = new THREE.PerspectiveCamera( 30.0, window.innerWidth / window.innerHeight, 0.1, 20.0 );
+  camera.position.set( 0.0, 1.5, 1.5 );
+  const scene = new THREE.Scene();
+
+  const light = new THREE.DirectionalLight( 0xffffff );
+  light.position.set( 1.0, 1.0, 1.0 ).normalize();
+  scene.add( light );
+
+  let model, ctx, videoWidth, videoHeight, video, canvas;
+
+  videoWidth = 300;
+  videoHeight = 250;
+
+  let currentVRM = undefined;
+  const loader = new THREE.GLTFLoader();
+  loader.load(
+
+      // URL of the VRM you want to load
+      'kabocha.vrm',
+
+      // called when the resource is loaded
+      ( gltf ) => {
+
+          // generate a VRM instance from gltf
+          THREE.VRM.from( gltf ).then( ( vrm ) => {
+
+              // add the loaded vrm to the scene
+              scene.add( vrm.scene );
+              currentVRM = vrm;
+
+              const hips = vrm.humanoid.getBoneNode( THREE.VRMSchema.HumanoidBoneName.Hips ); // Hipsボーンを取得
+              hips.rotation.y = Math.PI;
+
+              vrm.humanoid.setPose( {
+                [ THREE.VRMSchema.HumanoidBoneName.LeftUpperArm ]: {
+                  rotation: new THREE.Quaternion().setFromEuler( new THREE.Euler( 0.0, 0.0, 1.1 ) ).toArray()
+                },
+                [ THREE.VRMSchema.HumanoidBoneName.RightUpperArm ]: {
+                  rotation: new THREE.Quaternion().setFromEuler( new THREE.Euler( 0.0, 0.0, -1.1 ) ).toArray()
+                },
+              } );
+
+              renderer.render( scene, camera );
+          } );
+      },
+      // called while loading is progressing
+      ( progress ) => console.log( 'Loading model...', 100.0 * ( progress.loaded / progress.total ), '%' ),
+
+      // called when loading has errors
+      ( error ) => console.error( error )
+  );
+
+  let Module = {
+    onRuntimeInitialized() {
+      console.log("cv start");
+      main();
+    }
+  }
+
+  async function main() {
+
+    await setupCamera();
+
+    video.play();
+    videoWidth = video.videoWidth;
+    videoHeight = video.videoHeight;
+    video.width = videoWidth;
+    video.height = videoHeight;
+
+    canvas = document.getElementById('output');
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+    const canvasContainer = document.querySelector('.canvas-wrapper');
+    canvasContainer.style = `width: ${videoWidth}px; height: ${videoHeight}px`;
+
+    ctx = canvas.getContext('2d');
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.fillStyle = '#32EEDB';
+    ctx.strokeStyle = '#32EEDB';
+    ctx.lineWidth = 0.5;
+
+    model = await facemesh.load({maxFaces: state.maxFaces});
+
+    renderPrediction();
+  }
+
+  function head_pose_estimation(model_points) {
+
+    var image_points = cv.matFromArray( 6, 2,cv.CV_32F,[
+      model_points[0][0],model_points[0][1],
+      model_points[1][0],model_points[1][1],
+      model_points[2][0],model_points[2][1],
+      model_points[3][0],model_points[3][1],
+      model_points[4][0],model_points[4][1],
+      model_points[5][0],model_points[5][1],
+    ]);
+
+    let w = videoWidth / 2;
+    let h = videoHeight / 2;
+
+    var object_points = cv.matFromArray( 6, 3,cv.CV_32F,[
+      model_points[0][0]-w, model_points[0][1]-h, model_points[0][2],
+      model_points[1][0]-w, model_points[1][1]-h, model_points[1][2],
+      model_points[2][0]-w, model_points[2][1]-h, model_points[2][2],
+      model_points[3][0]-w, model_points[3][1]-h, model_points[3][2],
+      model_points[4][0]-w, model_points[4][1]-h, model_points[4][2],
+      model_points[5][0]-w, model_points[5][1]-h, model_points[5][2],
+    ]);
+
+    let size = [videoWidth, videoHeight, 3];
+    let focal_length = size[1];
+    let center = [size[1]/2, size[0]/2];
+    let camera_matrix = cv.matFromArray(3, 3,cv.CV_32F,[
+                          focal_length, 0, center[0],
+                          0, focal_length, center[1],
+                          0, 0, 1,
+    ]);
+
+    let dist_coeffs = cv.Mat.zeros(4, 1, cv.CV_32F);
+    let rotation_vector = new cv.Mat();
+    let translation_vector = new cv.Mat();
+
+    let success = cv.solvePnP(object_points, image_points,
+      camera_matrix, dist_coeffs, rotation_vector, translation_vector, false);
+
+    let rotation_matrix = new cv.Mat(3, 3, cv.CV_32F);
+    cv.Rodrigues(rotation_vector,rotation_matrix);
+
+    let rm = rotation_matrix.data64F;
+
+    let m00 = rm[0];
+    let m02 = rm[2];
+    let m10 = rm[3];
+    let m11 = rm[4];
+    let m12 = rm[5];
+    let m20 = rm[6];
+    let m21 = rm[7];
+    let m22 = rm[8];
+
+    let yaw,pitch,roll;
+
+    // https://www.learnopencv.com/rotation-matrix-to-euler-angles/
+    let sy = Math.sqrt(m00 * m00 +  m10 * m10);
+    let singular = sy < 10**-6;
+
+    if (!singular){
+      yaw = Math.atan2(m21 , m22);
+      pitch = Math.atan2(-m20, sy);
+      roll = Math.atan2(m10, m00);
+    } else {
+      yaw = Math.atan2(-m12, m11);
+      pitch = Math.atan2(-m20, sy);
+      roll = 0;
+    }
+
+    if (roll < 3 && roll > -3) {
+      const head = currentVRM.humanoid.getBoneNode( THREE.VRMSchema.HumanoidBoneName.Head );
+      head.rotation.set( yaw, -pitch , roll, 'XYZ' );
+      renderer.render( scene, camera );
+    }
+  }
+
+  async function renderPrediction() {
+
+    const predictions = await model.estimateFaces(video);
+    ctx.drawImage(
+        video, 0, 0, videoWidth, videoHeight, 0, 0, canvas.width, canvas.height);
+
+    if (predictions.length > 0) {
+      predictions.forEach(prediction => {
+        const keypoints = prediction.scaledMesh;
+        const annotations = prediction.annotations;
+
+        let rightEyeLower1 = annotations.rightEyeLower1[0];
+        let leftEyeLower1 = annotations.leftEyeLower1[0];
+        let noseTip = annotations.noseTip[0];
+        let chin = annotations.silhouette[18];
+        let leftLips = annotations.lipsUpperOuter[0];
+        let rightLips = annotations.lipsUpperOuter[10];
+
+        if (state.triangulateMesh) {
+          for (let i = 0; i < TRIANGULATION.length / 3; i++) {
+            const points = [
+              TRIANGULATION[i * 3], TRIANGULATION[i * 3 + 1],
+              TRIANGULATION[i * 3 + 2]
+            ].map(index => keypoints[index]);
+
+            drawPath(ctx, points, true);
+          }
+        }
+
+        // face dot drawing
+        let model_points = [noseTip,chin,leftEyeLower1,rightEyeLower1,leftLips,rightLips];
+        for(let i = 0; i < model_points.length; i++) {
+          const x = model_points[i][0];
+          const y = model_points[i][1];
+          ctx.beginPath();
+          ctx.fillStyle = "#FF0000";
+          ctx.arc(x, y, 3 /* radius */, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+        head_pose_estimation(model_points);
+      });
+    }
+    requestAnimationFrame(renderPrediction);
+  }
+
+  function drawPath(ctx, points, closePath) {
+    const region = new Path2D();
+    region.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; i++) {
+      const point = points[i];
+      region.lineTo(point[0], point[1]);
+    }
+
+    if (closePath) {
+      region.closePath();
+    }
+    ctx.stroke(region);
+  }
+
+  async function setupCamera() {
+    video = document.getElementById('video');
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      'audio': false,
+      'video': {
+        facingMode: 'user',
+        // Only setting the video to a specified size in order to accommodate a
+        // point cloud, so on mobile devices accept the default size.
+        width: videoWidth,
+        height: videoHeight
+      },
+    });
+    video.srcObject = stream;
+
+    return new Promise((resolve) => {
+      video.onloadedmetadata = () => {
+        resolve(video);
+      };
+    });
+  }
+    </script>
+  </body>
+</html>
