@@ -3,7 +3,6 @@
     <head>
     <title>In/Outside display</title>
     <script src="https://unpkg.com/three@0.116.1"></script>
-    <script type="text/javascript" src="techAcademy.js"></script>
     <script src="https://unpkg.com/three@0.116.1/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://unpkg.com/@pixiv/three-vrm@0.3.4/lib/three-vrm.js"></script>
 
@@ -25,24 +24,40 @@
       background: center;
       margin: 0;
       padding: 0;
-      /* background-color: black; */
-      background-image: url("back.jpeg");
+      background-color: white;
+      /* background-image: url("back.jpeg"); */
       background-size: cover;
       background-attachment: fixed;
     }
+    #main{
+      display: flex; /* 子要素をflexboxで揃える */
+      flex-direction: column; /* 子要素をflexboxにより縦方向に揃える */
+      justify-content: center; /* 子要素をflexboxにより中央に配置する */
+      align-items: center;  /* 子要素をflexboxにより中央に配置する */
+    }
+    canvas{
+      padding: 0;
+      margin: auto;
+      display: block;
+      position: absolute;
+      top: -12vh;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
 
     .output_screean {
-      position: relative;
       z-index: 1;
     }
     .vrmCanvas {
-      position: absolute;
       z-index: 2;
       /* background: gold; */
-      width: 450px;
-      height: 400px;
+      /* vrmのサイズ */
+      width: 32vw;
+      height: 40vh;
     }
 
+    /* 関係ない */
     .canvas-wrapper {
       position: absolute;
       z-index: 4;
@@ -65,22 +80,31 @@
       color: white;
       opacity: 0.9;
     }
-    .output_screean {
-        position: absolute;
-        top: 18%;
-        left: 35%;
+
+    img {
+      width: 100vw;
+      height: auto;
+      padding: 0;
+      margin: auto;
+      display: block;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
     }
     </style>
     </head>
     <body class="vsc-initialized">
-    <div id="main">
+      <div id="main">
+        <img class="img_pc" src="PC2.png" alt="">
       <div class="container">
         <!-- ここからモデル -->
         <div class="output_screean">
           <div id="vrmCanvas" class="vrmCanvas">
           </div>
-          <div class="textarea"></div>
-          <div><textarea class="input_text"></textarea></div>
+          <!-- <div class="textarea"></div>
+          <div><textarea class="input_text"></textarea></div> -->
         </div>
         <div class="canvas-wrapper" style="width: 300px; height: 250px;"><div class="vsc-controller vsc-nosource" data-vscid="el3u6cdoc"></div>
           <canvas id="output" width="300" height="250"></canvas>
