@@ -1,0 +1,68 @@
+html {
+    background-color: rgb(10, 10, 10);
+}
+
+.abs {
+    position: absolute;
+}
+body {
+    background: center;
+    margin: 0;
+    padding: 0;
+    background-color: rgb(10, 10, 10);
+    background-size: cover;
+    background-attachment: fixed;
+    overflow: hidden;
+}
+
+// toggle用
+.display {
+    display: none;
+}
+.nonvisible {
+    visibility: hidden;
+}
+
+#main {
+    width: 100vw;
+    height: 100vh;
+    display: flex; /* 子要素をflexboxで揃える */
+    flex-direction: column; /* 子要素をflexboxにより縦方向に揃える */
+    justify-content: center; /* 子要素をflexboxにより中央に配置する */
+    align-items: center;  /* 子要素をflexboxにより中央に配置する */
+}
+
+.container{
+    display: flex; /* 子要素をflexboxで揃える */
+    flex-direction: column; /* 子要素をflexboxにより縦方向に揃える */
+    justify-content: center; /* 子要素をflexboxにより中央に配置する */
+    align-items: center;  /* 子要素をflexboxにより中央に配置する */
+}
+canvas{
+    padding: 0;
+    margin: auto;
+    display: block;
+    position: absolute;
+    top: 10vh;
+    left: 0;
+    right: 0;
+    visibility: hidden;
+}
+
+.canvas-wrapper {
+    position: absolute;
+    z-index: 4;
+    width: 98%;
+    left: 10px;
+    top: 420px;
+    // display: none;
+}
+
+img {
+    width: 50%;
+    height: auto;
+}
+
+h1 {
+    color: rgb(255, 0, 0);
+}
